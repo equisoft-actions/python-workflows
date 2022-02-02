@@ -1,0 +1,96 @@
+name: Python Pipenv
+
+on:
+  workflow_call:
+    inputs:
+      workflow-path:
+        description: Workflow file used for change detection.
+        required: false
+        type: string
+      working-directory:
+        description: Relative path under $GITHUB_WORKSPACE where the project is located.
+        required: false
+        type: string
+
+jobs:
+  pre-checks:
+    name: Pre-checks
+    runs-on: ubuntu-latest
+    outputs:
+      should-skip: ${{ steps.skip-check.outputs.should_skip }}
+
+    steps:
+      - id: skip-check
+        uses: fkirc/skip-duplicate-actions@v3.4.1
+        with:
+          concurrent_skipping: same_content
+          do_not_skip: >-
+            [
+              "push",
+              "schedule",
+              "workflow_dispatch"
+            ]
+          paths: >-
+            [
+              ".tool-versions",
+              "${{ inputs.workflow-path }}",
+              "${{ inputs.working-directory }}/**"
+            ]
+          skip_after_successful_duplicate: true
+
+  setup:
+    name: Setup
+    needs: [pre-checks]
+    if: ${{ needs.pre_checks.outputs.should-skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: equisoft-actions/setup-python@v1.0.0
+
+  unit-tests:
+    name: Unit tests
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: equisoft-actions/setup-python@v1.0.0
+
+      - name: Run pytest
+        working-directory: ${{ inputs.working-directory }}
+        run: pipenv run pytest -v
+
+  type-check:
+    name: Type check
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: equisoft-actions/setup-python@v1.0.0
+
+      - name: Run pytype
+        working-directory: ${{ inputs.working-directory }}
+        run: pipenv run pytype
+
+  code-style:
+    name: Code style
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: equisoft-actions/setup-python@v1.0.0
+
+      - name: Run pycodestyle
+        working-directory: ${{ inputs.working-directory }}
+        run: pipenv run pycodestyle --statistics --count
