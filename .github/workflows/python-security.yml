@@ -1,0 +1,42 @@
+name: Python Security
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Relative path under $GITHUB_WORKSPACE where the project is located.
+        required: false
+        type: string
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Run secret scanner
+        uses: kronostechnologies/actions/scan-secrets@v0.0.20
+
+  sast:
+    name: SAST
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: equisoft-actions/setup-python@v1.0.0
+
+      - name: Run Semgrep
+        run: make check.sast
+
+      - name: Upload SAST report
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: semgrep-${{ inputs.working-directory }}.sarif
+          path: ${{ inputs.working-directory }}/build/reports/semgrep/semgrep.sarif

@@ -1,12 +1,8 @@
-name: Webapp frontend
+name: Python Pipenv
 
 on:
   workflow_call:
     inputs:
-      name:
-        description: Application name. Used as base to the various artifacts.
-        required: true
-        type: string
       workflow-path:
         description: Workflow file used for change detection.
         required: false
@@ -44,13 +40,13 @@ jobs:
 
   setup:
     name: Setup
-    needs:
-      - pre-checks
+    needs: [pre-checks]
     if: ${{ needs.pre_checks.outputs.should-skip != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
       - name: Setup Python
         uses: equisoft-actions/setup-python@v1.0.0
 
@@ -61,22 +57,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Setup Python
-        uses: equisoft-actions/setup-python@v1.0.0
-      - name: Run pytest
-        run: pipenv run pytest -v
 
-  code-style:
-    name: Code style
-    needs: [setup]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Setup Python
         uses: equisoft-actions/setup-python@v1.0.0
-      - name: Run pycodestyle
-        run: pipenv run pycodestyle --statistics --count
+
+      - name: Run pytest
+        working-directory: ${{ inputs.working-directory }}
+        run: pipenv run pytest -v
 
   type-check:
     name: Type check
@@ -85,25 +72,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
       - name: Setup Python
         uses: equisoft-actions/setup-python@v1.0.0
+
       - name: Run pytype
+        working-directory: ${{ inputs.working-directory }}
         run: pipenv run pytype
 
-  sast:
-    name: SAST
+  code-style:
+    name: Code style
     needs: [setup]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
       - name: Setup Python
         uses: equisoft-actions/setup-python@v1.0.0
-      - name: Run Semgrep
-        run: make check.sast
-      - name: Upload SAST report
-        uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: semgrep.sarif
-          path: ./build/reports/semgrep/semgrep.sarif
+
+      - name: Run pycodestyle
+        working-directory: ${{ inputs.working-directory }}
+        run: pipenv run pycodestyle --statistics --count
