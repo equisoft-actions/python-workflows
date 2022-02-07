@@ -3,10 +3,33 @@ name: Python Security
 on:
   workflow_call:
     inputs:
-      working-directory:
-        description: Relative path under $GITHUB_WORKSPACE where the project is located.
+      defectdojo-engagement:
+        description: "DefectDojo Engagement name or id"
+        default: ""
         required: false
         type: string
+      publish-reports:
+        description: Publish the generated reports to the Security Operation Center. Defaults to false.
+        default: false
+        required: false
+        type: boolean
+      report-retention-days:
+        description: "Duration in days to preserve reports."
+        required: false
+        default: "5"
+        type: string
+      working-directory:
+        description: Relative path under $GITHUB_WORKSPACE where the project is located.
+        default: .
+        required: false
+        type: string
+    secrets:
+      defectdojo-url:
+        description: DefectDojo URL
+        required: false
+      defectdojo-token:
+        description: DefectDojo API Token
+        required: false
 
 jobs:
   secrets:
@@ -19,7 +42,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run secret scanner
-        uses: kronostechnologies/actions/scan-secrets@v0.0.20
+        uses: kronostechnologies/actions/scan-secrets@v0.0.22
 
   sast:
     name: SAST
@@ -28,15 +51,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup Python
-        uses: equisoft-actions/setup-python@v1.0.0
-
-      - name: Run Semgrep
-        run: make check.sast
-
-      - name: Upload SAST report
-        uses: actions/upload-artifact@v2
-        if: always()
+      - name: Checks
+        uses: equisoft-actions/semgrep@v1.0.0
         with:
-          name: semgrep-${{ inputs.working-directory }}.sarif
-          path: ${{ inputs.working-directory }}/build/reports/semgrep/semgrep.sarif
+          defectdojo-engagement: ${{ inputs.defectdojo-engagement }}
+          defectdojo-publish: ${{ inputs.publish-reports }}
+          defectdojo-token: ${{ secrets.defectdojo-token }}
+          defectdojo-url: ${{ secrets.defectdojo-url }}
+          language: py
+          report-retention-days: ${{ inputs.report-retention-days }}
+          working-directory: ${{ inputs.working-directory }}
