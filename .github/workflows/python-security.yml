@@ -8,6 +8,15 @@ on:
         default: ""
         required: false
         type: string
+      dependency-track-project-name:
+        description: Project name for Dependency Track.
+        required: false
+        type: string
+      dependency-track-project-version:
+        description: Project name for Dependency Track. Typically the default branch unless multiple forks are maintained.
+        default: main
+        required: false
+        type: string
       publish-reports:
         description: Publish the generated reports to the Security Operation Center. Defaults to false.
         default: false
@@ -29,6 +38,12 @@ on:
         required: false
       defectdojo-token:
         description: DefectDojo API Token
+        required: false
+      dependency-track-url:
+        description: URL to the Dependency Track instance to publish the SBOM to.
+        required: false
+      dependency-track-api-key:
+        description: API key of the Dependency Track instance.
         required: false
 
 jobs:
@@ -59,5 +74,26 @@ jobs:
           defectdojo-token: ${{ secrets.defectdojo-token }}
           defectdojo-url: ${{ secrets.defectdojo-url }}
           language: py
+          report-retention-days: ${{ inputs.report-retention-days }}
+          working-directory: ${{ inputs.working-directory }}
+
+  sbom:
+    name: SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: equisoft-actions/setup-python@v1.0.0
+
+      - name: Generate SBOM
+        uses: equisoft-actions/pipenv-sbom@v1.0.0
+        with:
+          dependency-track-api-key: ${{ secrets.dependency-track-api-key }}
+          dependency-track-url: ${{ secrets.dependency-track-url }}
+          dependency-track-project-name: ${{ inputs.dependency-track-project-name }}
+          dependency-track-project-version: ${{ inputs.dependency-track-project-version }}
+          publish: ${{ inputs.publish-reports }}
           report-retention-days: ${{ inputs.report-retention-days }}
           working-directory: ${{ inputs.working-directory }}
