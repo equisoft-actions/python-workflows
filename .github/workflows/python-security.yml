@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run secret scanner
-        uses: kronostechnologies/actions/scan-secrets@v0.0.23
+        uses: equisoft-actions/scan-secrets@v1
 
   sast:
     name: SAST
@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Checks
-        uses: equisoft-actions/semgrep@v1.1.1
+        uses: equisoft-actions/semgrep@v1
         with:
           defectdojo-engagement: ${{ inputs.defectdojo-engagement }}
           defectdojo-publish: ${{ inputs.publish-reports }}
@@ -85,10 +85,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: equisoft-actions/setup-python@v1.1.0
+        uses: equisoft-actions/setup-python@v1
 
       - name: Generate SBOM
-        uses: equisoft-actions/pipenv-sbom@v1.0.0
+        uses: equisoft-actions/pipenv-sbom@v1
         with:
           dependency-track-api-key: ${{ secrets.dependency-track-api-key }}
           dependency-track-url: ${{ secrets.dependency-track-url }}
