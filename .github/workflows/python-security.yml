@@ -3,16 +3,6 @@ name: Python Security
 on:
   workflow_call:
     inputs:
-      publish-reports:
-        description: Publish the generated reports to the Security Operation Center. Defaults to false.
-        default: false
-        required: false
-        type: boolean
-      report-retention-days:
-        description: "Duration in days to preserve reports."
-        required: false
-        default: "5"
-        type: string
       working-directory:
         description: Relative path under $GITHUB_WORKSPACE where the project is located.
         default: .
@@ -20,18 +10,6 @@ on:
         type: string
 
 jobs:
-  secrets:
-    name: Secret scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Run secret scanner
-        uses: equisoft-actions/scan-secrets@v1
-
   sast:
     name: SAST
     runs-on: ubuntu-latest
@@ -43,21 +21,4 @@ jobs:
         uses: equisoft-actions/codeql@v1
         with:
           languages: python
-          working-directory: ${{ inputs.working-directory }}
-
-  sbom:
-    name: SBOM
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: equisoft-actions/setup-python@v1
-
-      - name: Generate SBOM
-        uses: equisoft-actions/pipenv-sbom@v2
-        with:
-          publish: ${{ inputs.publish-reports }}
-          report-retention-days: ${{ inputs.report-retention-days }}
           working-directory: ${{ inputs.working-directory }}
