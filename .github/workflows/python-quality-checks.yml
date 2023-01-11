@@ -39,48 +39,25 @@ jobs:
             ]
           skip_after_successful_duplicate: true
 
-  dependencies-manager:
-    name: Dependencies manager finder
-    needs: [ pre-checks ]
-    if: ${{ needs.pre_checks.outputs.should-skip != 'true' }}
-    runs-on: ubuntu-latest
-    outputs:
-      dm: ${{ steps.dependencies-manager.outputs.dm }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Search Poetry
-        id: search-poetry
-        shell: bash
-        run: echo "poetry-str=$(cat .tool-versions | grep poetry | awk '{print $1}')" >> $GITHUB_OUTPUT
-
-      - name: Check if poetry
-        id: check-if-poetry
-        shell: bash
-        run: echo "use-poetry=$(expr '${{ steps.search-poetry.outputs.poetry-str }}' == 'poetry')" >> $GITHUB_OUTPUT
-
-      - name: Dependecies Manager
-        id: dependencies-manager
-        shell: bash
-        run: if [[ ${{ steps.check-if-poetry.outputs.use-poetry }} == 1 ]]; then echo 'dm=poetry'; else echo 'dm=pipenv'; fi >> $GITHUB_OUTPUT
-
   setup:
     name: Setup
     needs: [ pre-checks ]
     if: ${{ needs.pre_checks.outputs.should-skip != 'true' }}
     runs-on: ubuntu-latest
+    outputs:
+      dependencies-manager: ${{ steps.setup-python.outputs.dependencies-manager }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Setup Python
+        id: setup-python
         uses: equisoft-actions/setup-python@v1
 
   unit-tests:
     name: Unit tests
-    needs: [ setup, dependencies-manager ]
+    needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -91,11 +68,11 @@ jobs:
 
       - name: Run pytest
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.dependencies-manager.outputs.dm }} run pytest -v
+        run: ${{ needs.setup.outputs.dependencies-manager }} run pytest -v
 
   type-check:
     name: Type check
-    needs: [ setup, dependencies-manager ]
+    needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -106,11 +83,11 @@ jobs:
 
       - name: Run pytype
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.dependencies-manager.outputs.dm }} run pytype
+        run: ${{ needs.setup.outputs.dependencies-manager }} run pytype
 
   code-style:
     name: Code style
-    needs: [ setup, dependencies-manager ]
+    needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -121,4 +98,4 @@ jobs:
 
       - name: Run pycodestyle
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.dependencies-manager.outputs.dm }} run pycodestyle --statistics --count
+        run: ${{ needs.setup.outputs.dependencies-manager }} run pycodestyle --statistics --count
