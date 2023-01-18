@@ -1,4 +1,4 @@
-name: Python Pipenv
+name: Python Quality Checks
 
 on:
   workflow_call:
@@ -20,7 +20,8 @@ jobs:
       should-skip: ${{ steps.skip-check.outputs.should_skip }}
 
     steps:
-      - id: skip-check
+      - name: Skip Check
+        id: skip-check
         uses: fkirc/skip-duplicate-actions@v5
         with:
           concurrent_skipping: same_content
@@ -40,19 +41,23 @@ jobs:
 
   setup:
     name: Setup
-    needs: [pre-checks]
+    needs: [ pre-checks ]
     if: ${{ needs.pre_checks.outputs.should-skip != 'true' }}
     runs-on: ubuntu-latest
+    outputs:
+      dependencies-manager: ${{ steps.setup-python.outputs.dependencies-manager }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Setup Python
+        id: setup-python
         uses: equisoft-actions/setup-python@v1
 
   unit-tests:
     name: Unit tests
-    needs: [setup]
+    needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -63,11 +68,11 @@ jobs:
 
       - name: Run pytest
         working-directory: ${{ inputs.working-directory }}
-        run: pipenv run pytest -v
+        run: ${{ needs.setup.outputs.dependencies-manager }} run pytest -v
 
   type-check:
     name: Type check
-    needs: [setup]
+    needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -78,11 +83,11 @@ jobs:
 
       - name: Run pytype
         working-directory: ${{ inputs.working-directory }}
-        run: pipenv run pytype
+        run: ${{ needs.setup.outputs.dependencies-manager }} run pytype
 
   code-style:
     name: Code style
-    needs: [setup]
+    needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -93,4 +98,4 @@ jobs:
 
       - name: Run pycodestyle
         working-directory: ${{ inputs.working-directory }}
-        run: pipenv run pycodestyle --statistics --count
+        run: ${{ needs.setup.outputs.dependencies-manager }} run pycodestyle --statistics --count
