@@ -98,28 +98,4 @@ jobs:
 
       - name: Run codestyle
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run ruff check --select E --select W --statistics ./
-
-  future-code-style:
-    name: Future code style
-    needs: [ setup ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: equisoft-actions/setup-python@v1
-
-      - name: Run future codestyle
-        id: run_future_codestyle
-        working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run ruff check --select ANN --select F --select I --select N --select PD --ignore ANN101 --ignore ANN102 --ignore ANN401 --ignore PD015 --ignore PD901 --statistics ./
-        continue-on-error: true
-
-      - name: generate exception
-        if: ${{ steps.run_future_codestyle.outcome == 'failure' }}
-        run: | 
-          text="The code does not comply to the future code style rules, it will become mandatory"
-          echo "::error ::$text"
-          exit 1
+        run: ${{ needs.setup.outputs.dependencies-manager }} run ruff check --extend-select E --extend-select W --statistics ./
