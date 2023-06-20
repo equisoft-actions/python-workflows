@@ -96,6 +96,6 @@ jobs:
       - name: Setup Python
         uses: equisoft-actions/setup-python@v1
 
-      - name: Run pycodestyle
+      - name: Run codestyle
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run pycodestyle --statistics --count
+        run: ${{ needs.setup.outputs.dependencies-manager }} run ruff check --select ANN --select E --select F --select I --select N --select PD --select W --ignore ANN101 --ignore ANN102 --ignore ANN401 --ignore PD015 --ignore PD901 --statistics ./
