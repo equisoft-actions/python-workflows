@@ -11,6 +11,25 @@ on:
         description: Relative path under $GITHUB_WORKSPACE where the project is located.
         required: false
         type: string
+      default-branch:
+        description: "Default branch to compute changed files"
+        required: false
+        default: "main"
+      only-changed-files:
+        description: |
+          Run code style check and type check analysis only on changed files compared to default branch.
+          With this option, if fetch-depth is not set or greater than 0 you can add a step to fetch the default branch
+          ```yaml
+          - name : Fetch origin/main
+            run : |
+              git fetch --no-tags --prune --depth=1000 origin +refs/heads/main:refs/remotes/origin/main
+          ```
+        required: false
+        default: 'false'
+      changed-files-pattern:
+        description: File path pattern.
+        default: \.py$
+        required: false
 
 jobs:
   pre-checks:
@@ -46,6 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       dependencies-manager: ${{ steps.setup-python.outputs.dependencies-manager }}
+      changed-files: ${{ steps.retrieve-changed-files.outputs.changed_files }}
 
     steps:
       - name: Checkout
@@ -54,6 +74,32 @@ jobs:
       - name: Setup Python
         id: setup-python
         uses: equisoft-actions/setup-python@v1
+
+      - name: Retrieved changed files
+        id: retrieve-changed-files
+        uses: |
+          CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+          if [[ "$CURRENT_BRANCH" != "${{ inputs.default-branch }}" ]] ; then
+            # Compute changed files
+            if [[ -n "${GITHUB_BASE_REF}" ]]; then
+              DIFF_TARGET="origin/$GITHUB_BASE_REF..."
+            else
+              DIFF_TARGET="origin/${{ inputs.default-branch }}..."
+            fi
+
+            # Allow to fail early if DIFF_TARGET not found on repo
+            git rev-parse $DIFF_TARGET > /dev/null 2>&1 || { echo "Diff target not found '$DIFF_TARGET'. You probably miss a git fetch step." > /dev/stderr; exit 1; }
+
+            # Get changed files which match the pattern.
+            # `|| :` is used to avoid exit by grep, when no line matches the pattern.
+            CHANGED_FILES=$(git diff $DIFF_TARGET --diff-filter=AM --name-only --no-color | grep -e "${{ inputs.changed-files-pattern }}" || :)
+            NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
+            if [[ $NUM_CHANGED_FILES -le 0 ]] ; then
+              echo "No python file changes.
+            else
+              echo "CHANGED_FILES=$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
   unit-tests:
     name: Unit tests
@@ -83,7 +129,18 @@ jobs:
 
       - name: Run pytype
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run pytype
+        if: ${{ needs.setup.outputs.changed-files != '' }}
+        run: |
+          command_string=(${{ needs.setup.outputs.dependencies-manager }} run pytype)
+      
+          if [[ -n ${{ inputs.only-changed-files }} ]]; then
+            command_string+=("${CHANGED_FILES}")
+          else
+            command_string+=("./")
+          fi
+          
+          echo "Command: " "${command_string[@]}"
+          ${command_string[@]}
 
   code-style:
     name: Code style
@@ -98,4 +155,15 @@ jobs:
 
       - name: Run codestyle
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run ruff check --select ANN --select E --select F --select I --select N --select PD --select W --ignore ANN101 --ignore ANN102 --ignore ANN401 --ignore PD015 --ignore PD901 --statistics ./
+        if: ${{ needs.setup.outputs.changed-files != '' }}
+        run: |
+          command_string=(${{ needs.setup.outputs.dependencies-manager }} run ruff check --select ANN --select E --select F --select I --select N --select PD --select W --ignore ANN101 --ignore ANN102 --ignore ANN401 --ignore PD015 --ignore PD901 --statistics)
+          
+          if [[ -n "${{ inputs.only-changed-files }}" ]]; then
+            command_string+=("${{ needs.setup.outputs.changed-files }}")
+          else
+            command_string+=("./")
+          fi
+          
+          echo "Command: " "${command_string[@]}"
+          ${command_string[@]}
