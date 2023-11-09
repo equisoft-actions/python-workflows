@@ -94,7 +94,6 @@ jobs:
       - name: Run pytype
         working-directory: ${{ inputs.working-directory }}
         run: |
-          echo ${{ inputs.type-checked-only-changed-files }}
           if [[ "${{ inputs.type-checked-only-changed-files }}" == "true" ]] ; then
             git fetch origin
             CHANGED_FILES=$(git diff --name-only  --diff-filter=AM origin/${{ inputs.default-branch }} origin/${GITHUB_HEAD_REF} | grep '\.py$')
