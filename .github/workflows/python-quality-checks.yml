@@ -72,7 +72,7 @@ jobs:
 
   unit-tests:
     name: Unit tests
-    if: ${{ inputs.skip-unit-tests != 'true' }}
+    if: ${{ inputs.skip-unit-tests == 'false' }}
     needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
@@ -106,7 +106,6 @@ jobs:
             NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
             if [[ $NUM_CHANGED_FILES -le 0 ]] ; then
               echo "No file changes. Skip"
-              exit 0
             else
               echo "Running pytype on changed files"
               echo "$CHANGED_FILES"
