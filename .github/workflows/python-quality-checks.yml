@@ -11,6 +11,10 @@ on:
         description: Relative path under $GITHUB_WORKSPACE where the project is located.
         required: false
         type: string
+      type-checked-only-changed-files:
+        description: Run type check only on changed files
+        required: false
+        default: 'false'
 
 jobs:
   pre-checks:
@@ -83,7 +87,21 @@ jobs:
 
       - name: Run pytype
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run pytype
+        run: |
+          if [[ "${{ inputs.type-checked-only-changed-files }}" == "true" ]] ; then
+            CHANGED_FILES=$(git diff --name-only origin/${GITHUB_HEAD_REF} | grep '\.py$')
+            NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
+            if [[ $NUM_CHANGED_FILES -le 0 ]] ; then
+              echo "No file changes. Skip"
+              exit 0
+            else
+              echo "Running pytype on changed files"
+              echo "$CHANGED_FILES"
+              ${{ needs.setup.outputs.dependencies-manager }} run pytype $CHANGED_FILES
+            fi
+          else
+            ${{ needs.setup.outputs.dependencies-manager }} run pytype 
+          fi
 
   code-style:
     name: Code style
