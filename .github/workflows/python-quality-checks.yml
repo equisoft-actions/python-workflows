@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: "master"
+      skip-unit-tests:
+        description: Skip unit tests
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   pre-checks:
@@ -67,6 +72,7 @@ jobs:
 
   unit-tests:
     name: Unit tests
+    if: ${{ inputs.skip-unit-tests != 'true' }}
     needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
