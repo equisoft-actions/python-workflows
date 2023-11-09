@@ -97,7 +97,7 @@ jobs:
           echo ${{ inputs.type-checked-only-changed-files }}
           if [[ "${{ inputs.type-checked-only-changed-files }}" == "true" ]] ; then
             git fetch origin
-            CHANGED_FILES=$(git diff --name-only origin/${{ inputs.default-branch }} origin/${GITHUB_HEAD_REF} | grep '\.py$')
+            CHANGED_FILES=$(git diff --name-only  --diff-filter=AM origin/${{ inputs.default-branch }} origin/${GITHUB_HEAD_REF} | grep '\.py$')
             NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
             if [[ $NUM_CHANGED_FILES -le 0 ]] ; then
               echo "No file changes. Skip"
