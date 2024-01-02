@@ -16,6 +16,11 @@ on:
         required: false
         type: boolean
         default: false
+      default-branch:
+        description: "Default branch to compute changed files"
+        required: false
+        type: string
+        default: ${{ github.event.repository.default_branch }}
       checks:
         description: |
           List of enabled checks separated by comma
@@ -103,15 +108,14 @@ jobs:
         run: |
           if [[ "${{ inputs.type-checks-only-changed-files }}" == "true" ]] ; then
             CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-            DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-            if [[ "$CURRENT_BRANCH" == "$DEFAULT_BRANCH" ]] ; then
+            if [[ "$CURRENT_BRANCH" == "${{ inputs.default-branch }}" ]] ; then
               echo "Running pytype on all files"
               ${{ needs.setup.outputs.dependencies-manager }} run pytype
             else
               if [[ -n "${GITHUB_BASE_REF}" ]]; then
                 DIFF_TARGET="origin/$GITHUB_BASE_REF..."
               else
-                DIFF_TARGET="origin/$DEFAULT_BRANCH..."
+                DIFF_TARGET="origin/${{ inputs.default-branch }}..."
               fi
               CHANGED_FILES=$(git diff $DIFF_TARGET --name-only --diff-filter=AM | grep '\.py$' || :)
               NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
