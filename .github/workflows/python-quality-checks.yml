@@ -107,6 +107,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: |
           if [[ "${{ inputs.type-checks-only-changed-files }}" == "true" ]] ; then
+            git fetch --no-tags --prune --depth=1000 origin
             CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
             if [[ "$CURRENT_BRANCH" == "${{ inputs.default-branch }}" ]] ; then
               echo "Running pytype on all files"
@@ -117,6 +118,10 @@ jobs:
               else
                 DIFF_TARGET="origin/${{ inputs.default-branch }}..."
               fi
+              
+              # Allow to fail early if DIFF_TARGET not found on repo
+              git rev-parse $DIFF_TARGET > /dev/null 2>&1 || { echo "Diff target not found '$DIFF_TARGET'. You probably miss a git fetch step." > /dev/stderr; exit 1; }
+
               CHANGED_FILES=$(git diff $DIFF_TARGET --name-only --diff-filter=AM | grep '\.py$' || :)
               NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
               if [[ $NUM_CHANGED_FILES -le 0 ]] ; then
