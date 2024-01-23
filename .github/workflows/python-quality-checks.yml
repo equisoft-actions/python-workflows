@@ -11,6 +11,24 @@ on:
         description: Relative path under $GITHUB_WORKSPACE where the project is located.
         required: false
         type: string
+      type-checks-only-changed-files:
+        description: Run type check only on changed files
+        required: false
+        type: boolean
+        default: false
+      default-branch:
+        description: "Default branch to compute changed files"
+        required: false
+        type: string
+        default: ${{ github.event.repository.default_branch }}
+      checks:
+        description: |
+          List of enabled checks separated by comma
+          default: type_check,code_style,unit_tests
+          available checks: type_check,code_style,unit_tests
+        required: false
+        type: string
+        default: "type_check,code_style,unit_tests"
 
 jobs:
   pre-checks:
@@ -57,6 +75,7 @@ jobs:
 
   unit-tests:
     name: Unit tests
+    if: contains(inputs.checks, 'unit_tests')
     needs: [ setup ]
     runs-on: ubuntu-latest
     steps:
@@ -73,22 +92,55 @@ jobs:
   type-check:
     name: Type check
     needs: [ setup ]
+    if: contains(inputs.checks, 'type_check')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1000
 
       - name: Setup Python
         uses: equisoft-actions/setup-python@v1
 
       - name: Run pytype
         working-directory: ${{ inputs.working-directory }}
-        run: ${{ needs.setup.outputs.dependencies-manager }} run pytype
+        run: |
+          if [[ "${{ inputs.type-checks-only-changed-files }}" == "true" ]] ; then
+            git fetch --no-tags --prune --depth=1000 origin
+            CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            if [[ "$CURRENT_BRANCH" == "${{ inputs.default-branch }}" ]] ; then
+              echo "Running pytype on all files"
+              ${{ needs.setup.outputs.dependencies-manager }} run pytype
+            else
+              if [[ -n "${GITHUB_BASE_REF}" ]]; then
+                DIFF_TARGET="origin/$GITHUB_BASE_REF..."
+              else
+                DIFF_TARGET="origin/${{ inputs.default-branch }}..."
+              fi
+              
+              # Allow to fail early if DIFF_TARGET not found on repo
+              git rev-parse $DIFF_TARGET > /dev/null 2>&1 || { echo "Diff target not found '$DIFF_TARGET'. You probably miss a git fetch step." > /dev/stderr; exit 1; }
+
+              CHANGED_FILES=$(git diff $DIFF_TARGET --name-only --diff-filter=AM | grep '\.py$' || :)
+              NUM_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v -e '^\s*$' | wc -l || :)
+              if [[ $NUM_CHANGED_FILES -le 0 ]] ; then
+                echo "No file changes. Skip"
+              else
+                echo "Running pytype on changed files"
+                echo "$CHANGED_FILES"
+                ${{ needs.setup.outputs.dependencies-manager }} run pytype $CHANGED_FILES
+              fi
+            fi
+          else
+            ${{ needs.setup.outputs.dependencies-manager }} run pytype 
+          fi
 
   code-style:
     name: Code style
     needs: [ setup ]
     runs-on: ubuntu-latest
+    if: contains(inputs.checks, 'code_style')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
